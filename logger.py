@@ -3,7 +3,31 @@ import os
 import datetime
 
 
-class LoggerBase(object):
+class LoggerSet(object):
+    """
+    LoggerSet object allows for multiple logger creation at the same time.
+    """
+
+    def __init__(self, *args, log_directory: str, printed: bool = False, traceback_log: bool = False):
+        """
+        Initializer method for LoggerSet to define the name of the log files and the directory holding the files.
+        :param args: Holding the name of all the logger instances
+        :type name: tuple
+        :param log_directory: Directory to store the log files (either relevant to the code constructing Logger object
+        or absolute path).
+        :type log_directory: str
+        """
+        self.loggers = {name: Logger(name, log_directory=log_directory, printed=printed, traceback_log=traceback_log)
+                        for name in args}
+
+    def __getattr__(self, item):
+        return self.loggers.get(item, None)
+
+    def __str__(self):
+        return f"LoggerSet object with {self.loggers} loggers: {tuple(self.loggers.keys())}"
+
+
+class _LoggerBase(object):
     def __init__(self, name: str, log_directory: str):
         """
         Initializer method for Logger base to define the name of the log file and the directory holding the file.
@@ -17,11 +41,12 @@ class LoggerBase(object):
         self.log_directory = log_directory
 
 
-class Logger(LoggerBase):
+class Logger(_LoggerBase):
     """
     Class of the logger to log different handled errors in the code.
     """
     LOG_TYPES = {'info': logging.info, 'debug': logging.debug, 'warning': logging.warning, 'critical': logging.critical}
+    logger_instances = {}
 
     def __init__(self, name: str, log_directory: str, printed: bool = False, traceback_log: bool = False):
         """
@@ -88,7 +113,7 @@ class Logger(LoggerBase):
         self.LOG_TYPES[log_type](output_msg)
 
 
-class LogFetch(LoggerBase):
+class LogFetch(_LoggerBase):
     def __init__(self, name, log_directory):
         """
         Initializer method to determine the name of the log file and the directory holding the file.
