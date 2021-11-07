@@ -20,11 +20,63 @@ class LoggerSet(object):
         self.loggers = {name: Logger(name, log_directory=log_directory, printed=printed, traceback_log=traceback_log)
                         for name in args}
 
-    def __getattr__(self, item):
+    def refresh(self, name: str):
+        """
+        Refreshes one of the logger objects in the LoggerSet object.
+        :param name: Name of the logger.
+        :type name: str
+        """
+        self.loggers[name] = Logger(name=self.loggers[name].name, log_directory=self.loggers[name].log_directory,
+                                    printed=self.loggers[name].printed, traceback_log=self.loggers[name].traceback_log)
+
+    def propagate(self, *args, msg: str, log_type: str, error: Exception):
+        """
+        This method allows for the message to be logged by a subset of logger instances in the LoggerSet.
+        :param args: Sequence of all logger names
+        :type args: tuple
+        :param msg: The message to be logged by all the loggers.
+        :type msg: str
+        :param log_type: The type of the error to be logged
+        :type log_type: str
+        :param error: The error object captured
+        :type error: Exception
+        """
+        for name in filter(lambda x: True if x in self.loggers.keys() else False, args):
+            self.loggers[name].log(msg=msg, log_type=log_type, error=error)
+
+    def propagate_all(self, msg: str, log_type: str, error: Exception):
+        """
+        This method allows for the message to be logged by all logger instances
+        :param msg: The message to be logged by all the loggers.
+        :type msg: str
+        :param log_type: The type of the error to be logged
+        :type log_type: str
+        :param error: The error object captured
+        :type error: Exception
+        """
+        self.propagate(*tuple(self.loggers.keys()), msg=msg, log_type=log_type, error=error)
+
+    def __getattr__(self, item: str):
+        """
+        Returns one of the loggers in the LoggerSet.
+        :param item: Name of the logger object to be returned
+        :type item: str
+        """
         return self.loggers.get(item, None)
 
     def __str__(self):
         return f"LoggerSet object with {self.loggers} loggers: {tuple(self.loggers.keys())}"
+
+    def __delitem__(self, key: str):
+        """
+        Deletes on logger object in the LoggerSet
+        :param key: Logger name to be deleted
+        :type key: str
+        """
+        try:
+            del self.loggers[key]
+        except KeyError:
+            pass
 
 
 class _LoggerBase(object):
@@ -64,6 +116,8 @@ class Logger(_LoggerBase):
         self.printed = printed
         self.name = name
         self.traceback_log = traceback_log
+        self.log_count = 0
+        self.created = datetime.datetime.utcnow()
         try:
             logging.basicConfig(filename=f'{self.log_directory}/{self.name}.log', level=logging.DEBUG)
         except FileNotFoundError:
@@ -111,6 +165,10 @@ class Logger(_LoggerBase):
             print(output_msg)
 
         self.LOG_TYPES[log_type](output_msg)
+        self.log_count += 1
+
+    def __str__(self):
+        return f"{self.name} Logger object created at {self.created} with {self.log_count} written."
 
 
 class LogFetch(_LoggerBase):
