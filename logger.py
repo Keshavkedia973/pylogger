@@ -53,21 +53,23 @@ class Logger(object):
 
         # Creating the string for the extra info
         if self.traceback_log:
-            extra_info = f"\nExtra information:\nOriginal error: {error} in "
+            extra_info = f"\nOriginal Error: {error} in: \n"
             frame = error.__traceback__.tb_frame
+            indentation = len(extra_info)
+            print(indentation)
 
             while frame:
-                extra_info += f"{frame.f_code.co_filename} file at line {frame.f_lineno} --> "
+                extra_info += " " * indentation + f"- Line {frame.f_lineno} of file {frame.f_code.co_filename} --> \n"
                 frame = frame.f_back
-            extra_info = extra_info.rstrip(" --> ") + "\n"
+            extra_info = extra_info.rstrip(" --> \n") + "\n"
         else:
             extra_info = ""
 
         # Creating the final message to be logged
-        output_msg = msg + extra_info
+        output_msg = basic_info + extra_info
         output_msg += "-" * 20
 
         if self.printed:
-            print(f"{log_time} - {log_type} - {output_msg}")
+            print(output_msg)
 
-        self.LOG_TYPES[log_type](f"{log_time.date()} {log_time.hour}:{log_time.minute} | " + output_msg)
+        self.LOG_TYPES[log_type](output_msg)
