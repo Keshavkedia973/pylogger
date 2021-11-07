@@ -1,7 +1,6 @@
 import logging
 import os
 import datetime
-import traceback
 
 
 class Logger(object):
