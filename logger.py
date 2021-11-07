@@ -3,7 +3,21 @@ import os
 import datetime
 
 
-class Logger(object):
+class LoggerBase(object):
+    def __init__(self, name: str, log_directory: str):
+        """
+        Initializer method for Logger base to define the name of the log file and the directory holding the file.
+        :param name: Name of the log file or the log types intended for each instance.
+        :type name: str
+        :param log_directory: Directory to store the log file (either relevant to the code constructing Logger object or
+        absolute path).
+        :type log_directory: str
+        """
+        self.name = name
+        self.log_directory = log_directory
+
+
+class Logger(object, LoggerBase):
     """
     Class of the logger to log different handled errors in the code.
     """
@@ -12,14 +26,13 @@ class Logger(object):
     def __init__(self, name: str, log_directory: str, printed: bool = False, traceback_log: bool = False):
         """
         Initializer method
-        :param name: Name of the log file or the log types intended for each instance.
-        :type name: str
-        :param log_directory: Directory to store the log file (either relevant to the code constructing Logger object or
-        absolute path).
-        :type log_directory: str
         :param printed: Whether the log message should be printed or not.
         :type printed: bool
+        :return: None
+        :rtype: None
         """
+        # Calling the superclass init
+        super(Logger, self).__init__(name=name, log_directory=log_directory)
 
         # Logging setup
         self.log_directory = log_directory
@@ -72,3 +85,16 @@ class Logger(object):
             print(output_msg)
 
         self.LOG_TYPES[log_type](output_msg)
+
+
+class LogFetch(object, LoggerBase):
+    def __init__(self, name, log_directory):
+        """
+        Initializer method to determine the name of the log file and the directory holding the file.
+        :param name: Name of the log file
+        :type name: str
+        :param log_directory: Directory to store the log file (either relevant to the code constructing Logger object or
+        absolute path).
+        :type log_directory: str
+        """
+        super(LogFetch, self).__init__(name=name, log_directory=log_directory)
