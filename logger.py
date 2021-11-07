@@ -17,7 +17,7 @@ class LoggerBase(object):
         self.log_directory = log_directory
 
 
-class Logger(object, LoggerBase):
+class Logger(LoggerBase):
     """
     Class of the logger to log different handled errors in the code.
     """
@@ -71,7 +71,8 @@ class Logger(object, LoggerBase):
             print(indentation)
 
             while frame:
-                extra_info += " " * indentation + f"- Line {frame.f_lineno} of file {frame.f_code.co_filename} --> \n"
+                extra_info += " " * indentation + f"- Line {frame.f_lineno} at {frame.f_code.co_name} function of " \
+                                                  f"file {frame.f_code.co_filename} --> \n"
                 frame = frame.f_back
             extra_info = extra_info.rstrip(" --> \n") + "\n"
         else:
@@ -87,7 +88,7 @@ class Logger(object, LoggerBase):
         self.LOG_TYPES[log_type](output_msg)
 
 
-class LogFetch(object, LoggerBase):
+class LogFetch(LoggerBase):
     def __init__(self, name, log_directory):
         """
         Initializer method to determine the name of the log file and the directory holding the file.
