@@ -2,6 +2,8 @@ import logging
 import datetime
 import os
 
+formatter = logging.Formatter('%(levelname)s %(message)s')
+
 
 class LoggerSet(object):
     """
@@ -123,7 +125,12 @@ class Logger(_LoggerBase):
         :type log_directory: str
         :return:
         """
-        handler = logging.FileHandler(log_directory + f"/{self.name}.log")
+        try:
+            handler = logging.FileHandler(log_directory + f"/{self.name}.log")
+        except FileNotFoundError:
+            os.mkdir(f'{self.log_directory}/')
+            handler = logging.FileHandler(log_directory + f"/{self.name}.log")
+        handler.setFormatter(formatter)
         self.logger = logging.getLogger(self.name)
         self.logger.addHandler(handler)
         self.log_types = {'info': self.logger.info, 'debug': self.logger.debug,
@@ -145,7 +152,7 @@ class Logger(_LoggerBase):
         log_time = datetime.datetime.now()
 
         # Creating the string for the basic info
-        basic_info = f"{log_time.date()} {log_time.hour}:{log_time.minute} | " + msg
+        basic_info = f"| {msg}\n{log_time.date()} {log_time.hour}:{log_time.minute}"
 
         # Creating the string for the extra info
         if self.traceback_log:
