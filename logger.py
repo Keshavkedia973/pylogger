@@ -1,6 +1,6 @@
 import logging
-import os
 import datetime
+import os
 
 
 class LoggerSet(object):
@@ -8,17 +8,17 @@ class LoggerSet(object):
     LoggerSet object allows for multiple logger creation at the same time.
     """
 
-    def __init__(self, *args, log_directory: str, printed: bool = False, traceback_log: bool = False):
+    def __init__(self, logger_names: list, log_directory: str, printed: bool = False, traceback_log: bool = False):
         """
         Initializer method for LoggerSet to define the name of the log files and the directory holding the files.
-        :param args: Holding the name of all the logger instances
-        :type name: tuple
+        :param logger_names: Holding the name of all the logger instances
+        :type logger_names: list
         :param log_directory: Directory to store the log files (either relevant to the code constructing Logger object
         or absolute path).
         :type log_directory: str
         """
         self.loggers = {name: Logger(name, log_directory=log_directory, printed=printed, traceback_log=traceback_log)
-                        for name in args}
+                        for name in logger_names}
 
     def refresh(self, name: str):
         """
@@ -97,8 +97,6 @@ class Logger(_LoggerBase):
     """
     Class of the logger to log different handled errors in the code.
     """
-    LOG_TYPES = {'info': logging.info, 'debug': logging.debug, 'warning': logging.warning, 'critical': logging.critical}
-    logger_instances = {}
 
     def __init__(self, name: str, log_directory: str, printed: bool = False, traceback_log: bool = False):
         """
@@ -112,19 +110,26 @@ class Logger(_LoggerBase):
         super(Logger, self).__init__(name=name, log_directory=log_directory)
 
         # Logging setup
-        self.log_directory = log_directory
         self.printed = printed
-        self.name = name
         self.traceback_log = traceback_log
         self.log_count = 0
         self.created = datetime.datetime.utcnow()
-        try:
-            logging.basicConfig(filename=f'{self.log_directory}/{self.name}.log', level=logging.DEBUG)
-        except FileNotFoundError:
-            os.mkdir(f'{self.log_directory}/')
-            logging.basicConfig(filename=f'{self.log_directory}/{self.name}.log', level=logging.DEBUG)
+        self._setup_logger(log_directory)
 
-    def log(self, msg, log_type, error):
+    def _setup_logger(self, log_directory: str):
+        """
+        This method sets up the logger object.
+        :param log_directory: The directory of the file
+        :type log_directory: str
+        :return:
+        """
+        handler = logging.FileHandler(log_directory + f"/{self.name}.log")
+        self.logger = logging.getLogger(self.name)
+        self.logger.addHandler(handler)
+        self.log_types = {'info': self.logger.info, 'debug': self.logger.debug,
+                          'warning': self.logger.warning, 'critical': self.logger.critical}
+
+    def log(self, msg: str, log_type: str, error: Exception = None):
         """
         This is a function for logging success and failures
 
@@ -144,16 +149,18 @@ class Logger(_LoggerBase):
 
         # Creating the string for the extra info
         if self.traceback_log:
-            extra_info = f"\nOriginal Error: {error} in: \n"
-            frame = error.__traceback__.tb_frame
-            indentation = len(extra_info)
-            print(indentation)
+            if error:
+                extra_info = f"\nOriginal Error: {error} in: \n"
+                frame = error.__traceback__.tb_frame
+                indentation = len(extra_info)
 
-            while frame:
-                extra_info += " " * indentation + f"- Line {frame.f_lineno} at {frame.f_code.co_name} function of " \
-                                                  f"file {frame.f_code.co_filename} --> \n"
-                frame = frame.f_back
-            extra_info = extra_info.rstrip(" --> \n") + "\n"
+                while frame:
+                    extra_info += " " * indentation + f"- Line {frame.f_lineno} at {frame.f_code.co_name} function of" \
+                                                      f" file {frame.f_code.co_filename} --> \n"
+                    frame = frame.f_back
+                extra_info = extra_info.rstrip(" --> \n") + "\n"
+            else:
+                extra_info = ""
         else:
             extra_info = ""
 
@@ -164,7 +171,7 @@ class Logger(_LoggerBase):
         if self.printed:
             print(output_msg)
 
-        self.LOG_TYPES[log_type](output_msg)
+        self.log_types[log_type](output_msg)
         self.log_count += 1
 
     def __str__(self):
@@ -172,7 +179,7 @@ class Logger(_LoggerBase):
 
 
 class LogFetch(_LoggerBase):
-    def __init__(self, name, log_directory):
+    def __init__(self, name: str, log_directory: str):
         """
         Initializer method to determine the name of the log file and the directory holding the file.
         :param name: Name of the log file
