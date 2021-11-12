@@ -1,3 +1,4 @@
+import json
 import logging
 import datetime
 import os
@@ -126,15 +127,52 @@ class Logger(_LoggerBase):
         :return:
         """
         try:
-            handler = logging.FileHandler(log_directory + f"/{self.name}.log")
+            handler = logging.FileHandler(log_directory + f"/{self.name}/{self.name}.log")
         except FileNotFoundError:
-            os.mkdir(f'{self.log_directory}/')
-            handler = logging.FileHandler(log_directory + f"/{self.name}.log")
+            os.mkdir(f'{self.log_directory}/{self.name}/')
+            handler = logging.FileHandler(log_directory + f"/{self.name}/{self.name}.log")
         handler.setFormatter(formatter)
         self.logger = logging.getLogger(self.name)
         self.logger.addHandler(handler)
         self.log_types = {'info': self.logger.info, 'debug': self.logger.debug,
                           'warning': self.logger.warning, 'critical': self.logger.critical}
+
+    def _json_writer(self, item: dict):
+        try:
+            # Writing the Json format to the appropriate file
+            with open(f"{self.log_directory}/{self.name}/{self.name}.json", 'a', encoding='utf-8') as file:
+                json.dump(item, file, ensure_ascii=False, indent=4)
+        except FileNotFoundError:
+            pass
+
+    @staticmethod
+    def _extra_info_builder(error: Exception, beautify: bool = False):
+        """
+        This method receives an error and builds the dictionary item and formatted string
+        :param error: The error object that holds the traceback history
+        :type error: Exception
+        :return: The formatted string and the error item object
+        :rtype: tuple
+        """
+        formatted_string = f"\nOriginal Error: {error} in: \n"
+        frame = error.__traceback__.tb_frame
+        indentation = len(formatted_string)
+        item = {}
+        current_item = item
+        while frame:
+            if beautify:
+                formatted_string += " " * indentation + f"- Line {frame.f_lineno} at {frame.f_code.co_name} function of" \
+                                                        f" file {frame.f_code.co_filename} --> \n"
+            else:
+                formatted_string = ""
+
+            current_item['parent'] = {'LineNo': frame.f_lineno,
+                                      'Function': frame.f_code.co_name,
+                                      'File': frame.f_code.co_filename
+                                      }
+            current_item = current_item['parent']
+            frame = frame.f_back
+        return item, formatted_string
 
     def log(self, msg: str, log_type: str, error: Exception = None):
         """
@@ -154,20 +192,11 @@ class Logger(_LoggerBase):
         # Creating the string for the basic info
         basic_info = f"| {msg}\n{log_time.date()} {log_time.hour}:{log_time.minute}"
 
-        # Creating the string for the extra info
-        if self.traceback_log:
-            if error:
-                extra_info = f"\nOriginal Error: {error} in: \n"
-                frame = error.__traceback__.tb_frame
-                indentation = len(extra_info)
-
-                while frame:
-                    extra_info += " " * indentation + f"- Line {frame.f_lineno} at {frame.f_code.co_name} function of" \
-                                                      f" file {frame.f_code.co_filename} --> \n"
-                    frame = frame.f_back
-                extra_info = extra_info.rstrip(" --> \n") + "\n"
-            else:
-                extra_info = ""
+        # Creating the log item and beautiful string for the extra info
+        if error:
+            json_item, extra_info = self._extra_info_builder(error=error, beautify=self.traceback_log)
+            json_item['Time'] = str(self.created)
+            self._json_writer(json_item)
         else:
             extra_info = ""
 
